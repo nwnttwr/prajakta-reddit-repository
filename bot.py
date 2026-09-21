@@ -5,14 +5,11 @@ import requests
 import feedparser
 from bs4 import BeautifulSoup
 
-# Reddit feed
 RSS_URL = "https://www.reddit.com/r/Prajakta_fans/new/.rss"
 
-# Telegram
 BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 CHAT_ID = "-1003907685039"
 
-# Remember posts already sent
 STATE_FILE = "state.json"
 
 HEADERS = {
@@ -45,15 +42,15 @@ def load_state():
         return set()
 
     try:
-        with open(STATE_FILE, "r", encoding="utf-8") as f:
-            return set(json.load(f))
+        with open(STATE_FILE, "r", encoding="utf-8") as file:
+            return set(json.load(file))
     except Exception:
         return set()
 
 
 def save_state(seen):
-    with open(STATE_FILE, "w", encoding="utf-8") as f:
-        json.dump(list(seen)[-200:], f)
+    with open(STATE_FILE, "w", encoding="utf-8") as file:
+        json.dump(list(seen)[-200:], file)
 
 
 def clean_html(value):
@@ -72,14 +69,12 @@ def get_images(entry):
 
     soup = BeautifulSoup(summary, "html.parser")
 
-    # Find images inside the RSS content
     for img in soup.find_all("img"):
         url = img.get("src")
 
         if url:
             images.append(url)
 
-    # Check RSS media fields
     for media in entry.get("media_content", []):
         if isinstance(media, dict):
             url = media.get("url")
@@ -87,12 +82,10 @@ def get_images(entry):
             if url:
                 images.append(url)
 
-    # Remove duplicates
     return list(dict.fromkeys(images))
 
 
 def send_photo(url, caption):
-
     response = requests.get(
         url,
         headers=HEADERS,
@@ -129,26 +122,19 @@ def send_photo(url, caption):
 
 
 def send_text(title, body, author, link):
-
-    message = (
-        f"<b>{html.escape(title)}</b>\n\n"
-    )
+    message = f"<b>{html.escape(title)}</b>\n\n"
 
     if body:
-        message += (
-            html.escape(body[:3500])
-            + "\n\n"
-        )
+        message += html.escape(body[:3500])
+        message += "\n\n"
 
     if author:
-        message += (
-            f"👤 {html.escape(author)}\n"
-        )
+        message += f"👤 {html.escape(author)}\n"
 
     message += "📍 r/Prajakta_fans\n"
 
     message += (
-        f'🔗 <a href="{html.escape(link)}">'
+        f'<a href="{html.escape(link)}">'
         "Original Reddit post</a>"
     )
 
@@ -164,21 +150,9 @@ def send_text(title, body, author, link):
 
 
 def process_post(entry):
-
-    title = entry.get(
-        "title",
-        "Reddit post"
-    )
-
-    link = entry.get(
-        "link",
-        ""
-    )
-
-    author = entry.get(
-        "author",
-        ""
-    )
+    title = entry.get("title", "Reddit post")
+    link = entry.get("link", "")
+    author = entry.get("author", "")
 
     body = clean_html(
         entry.get("summary", "")
@@ -186,30 +160,21 @@ def process_post(entry):
 
     caption = (
         f"<b>{html.escape(title)}</b>\n"
-        f"📍 r/Prajakta_fans"
+        "📍 r/Prajakta_fans"
     )
 
     if author:
-        caption += (
-            f"\n👤 {html.escape(author)}"
-        )
+        caption += f"\n👤 {html.escape(author)}"
 
     images = get_images(entry)
 
-    # Try to send the actual image
     for image in images[:10]:
-
         try:
-
             if send_photo(image, caption):
                 return
-
         except Exception as error:
-
             print("Image error:", error)
 
-    # If no image is available,
-    # send the Reddit post as text.
     send_text(
         title,
         body,
@@ -219,33 +184,22 @@ def process_post(entry):
 
 
 def main():
+    print("Checking r/Prajakta_fans...")
 
-    print(
-        "Checking r/Prajakta_fans..."
-    )
-
-feed = feedparser.parse(
+    feed = feedparser.parse(
         RSS_URL,
         request_headers=HEADERS
     )
 
     if not feed.entries:
-
-        print(
-            "No Reddit posts found."
-        )
-
+        print("No Reddit posts found.")
         return
 
     seen = load_state()
 
-    # Process oldest first
-    entries = list(
-        reversed(feed.entries)
-    )
+    entries = list(reversed(feed.entries))
 
     for entry in entries:
-
         post_id = (
             entry.get("id")
             or entry.get("link")
@@ -254,32 +208,24 @@ feed = feedparser.parse(
         if not post_id:
             continue
 
-        # Don't send the same post twice
         if post_id in seen:
             continue
 
-        print(
+print(
             "New post:",
             entry.get("title")
         )
 
         try:
-
             process_post(entry)
-
             seen.add(post_id)
 
         except Exception as error:
-
-            print(
-                "ERROR:",
-                error
-            )
+            print("ERROR:", error)
 
     save_state(seen)
 
 
 if name == "main":
-
     main()
 
