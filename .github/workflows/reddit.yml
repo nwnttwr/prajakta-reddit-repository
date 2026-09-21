@@ -1,0 +1,47 @@
+name: Reddit to Telegram
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+
+  reddit-feed:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Get repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install packages
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run Reddit bot
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: |
+          python bot.py
+
+      - name: Save sent-post list
+        run: |
+          git config user.name "reddit-telegram-bot"
+          git config user.email "actions@github.com"
+
+          git add state.json
+
+          git diff --cached --quiet || git commit -m "Update Reddit post state"
+
+          git push
