@@ -211,7 +211,7 @@ def main():
         if post_id in seen:
             continue
 
-print(
+        print(
             "New post:",
             entry.get("title")
         )
@@ -226,6 +226,5 @@ print(
     save_state(seen)
 
 
-if name == "main":
+if __name__ == "__main__":
     main()
-
